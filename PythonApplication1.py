@@ -45,7 +45,7 @@ batch_size = 128
 train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_ds, batch_size=batch_size)
 
-# Creating a logistic regression model using nn.Linear
+# Declaring the size of the images and the no. of digits the number might fall into i.e. 0 to 9 is numclasses
 ip_size = 28 * 28
 num_classes = 10
 
