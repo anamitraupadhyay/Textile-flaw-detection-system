@@ -9,7 +9,7 @@ import numpy as np
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
-
+print(torch.__version__)
 # Define the accuracy function
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
