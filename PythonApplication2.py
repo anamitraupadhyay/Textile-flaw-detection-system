@@ -2,50 +2,59 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
 import os
+import kagglehub
+
+# Download dataset
+path = kagglehub.dataset_download("angelolmg/tilda-400-64x64-patches")
+print("Path to dataset files:", path)
+dataset_path = path
 
 # Hyperparameters
 batch_size = 64
 epochs = 10
 learning_rate = 0.001
 
-# Path to your dataset folder (adjust this to your dataset location)
-dataset_path = 'path_to_your_dataset_folder'  # Replace this with the correct path
-
-# Transformations: Convert images to grayscale, resize if necessary, and normalize
+# Transformations
 transform = transforms.Compose([
-    transforms.Grayscale(num_output_channels=1),  # Grayscale conversion
-    transforms.ToTensor(),  # Convert images to tensor
-    transforms.Normalize((0.5,), (0.5,))  # Normalize with mean and std deviation
+    transforms.Grayscale(num_output_channels=1),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,), (0.5,))
 ])
 
-# Load dataset using ImageFolder (Make sure your dataset is organized in folders)
+# Load dataset
 dataset = datasets.ImageFolder(root=dataset_path, transform=transform)
 
-# Split dataset into training (80%) and validation (20%) sets
+# Class weights for handling class imbalance
+class_counts = [len(dataset.samples) for _, label in dataset.class_to_idx.items()]
+class_weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)
+sample_weights = [class_weights[target] for _, target in dataset.samples]
+sampler = WeightedRandomSampler(sample_weights, len(dataset))
+
+# Split dataset
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
-train_ds, val_ds = random_split(dataset, [train_size, val_size])
+train_ds, val_ds = random_split(dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
 
-# Create DataLoaders for training and validation
-train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+# Create DataLoaders
+train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler)
 val_loader = DataLoader(val_ds, batch_size=batch_size)
 
-# Define the model
+# Model
 class FabricDefectModel(nn.Module):
     def __init__(self):
-        super(FabricDefectModel, self).__init__()
-        self.linear1 = nn.Linear(64*64, 512)
-        self.linear2 = nn.Linear(512, 256)
-        self.linear3 = nn.Linear(256, 5)  # 5 output classes ('good', 'hole', etc.)
+        super().__init__()
+        self.fc1 = nn.Linear(64 * 64, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 5)
 
-    def forward(self, xb):
-        xb = xb.view(-1, 64*64)  # Flatten the 64x64 image
-        xb = F.relu(self.linear1(xb))
-        xb = F.relu(self.linear2(xb))
-        out = self.linear3(xb)
-        return out
+    def forward(self, x):
+        x = x.view(-1, 64 * 64)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
     def training_step(self, batch):
         images, labels = batch
@@ -70,16 +79,15 @@ class FabricDefectModel(nn.Module):
     def epoch_end(self, epoch, result):
         print(f"Epoch [{epoch}], val_loss: {result['val_loss']:.4f}, val_acc: {result['val_acc']:.4f}")
 
-# Define accuracy function
+# Accuracy function
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
 
-# Instantiate the model
+# Instantiate model, optimizer, and loss function
 model = FabricDefectModel()
-
-# Define optimizer and loss function
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+criterion = nn.CrossEntropyLoss(weight=class_weights)
 
 # Evaluation function
 def evaluate(model, val_loader):
@@ -87,26 +95,22 @@ def evaluate(model, val_loader):
     return model.validation_epoch_end(outputs)
 
 # Training loop
-def fit(epochs, model, train_loader, val_loader, optimizer):
+def fit(epochs, model, train_loader, val_loader, optimizer, criterion):
     history = []
-
     for epoch in range(epochs):
-        # Training Phase
         for batch in train_loader:
             loss = model.training_step(batch)
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
 
-        # Validation Phase
         result = evaluate(model, val_loader)
         model.epoch_end(epoch, result)
         history.append(result)
-
     return history
 
-# Start training the model
-history = fit(epochs, model, train_loader, val_loader, optimizer)
+# Training
+history = fit(epochs, model, train_loader, val_loader, optimizer, criterion)
 
-# Save the model after training
+# Save model
 torch.save(model.state_dict(), 'fabric_defect_model.pth')
