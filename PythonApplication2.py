@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
+from torch.utils.data import DataLoader, WeightedRandomSampler, SubsetRandomSampler
 import os
 import kagglehub
 
@@ -27,19 +27,24 @@ transform = transforms.Compose([
 dataset = datasets.ImageFolder(root=dataset_path, transform=transform)
 
 # Class weights for handling class imbalance
-class_counts = [len(dataset.samples) for _, label in dataset.class_to_idx.items()]
-class_weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)
+class_counts = torch.tensor([len(dataset.samples) for _, label in dataset.class_to_idx.items()])
+class_weights = 1.0 / class_counts
 sample_weights = [class_weights[target] for _, target in dataset.samples]
-sampler = WeightedRandomSampler(sample_weights, len(dataset))
 
-# Split dataset
+# Split dataset (using SubsetRandomSampler for better control)
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
-train_ds, val_ds = random_split(dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
+
+train_indices = list(range(train_size))
+val_indices = list(range(train_size, len(dataset)))
+
+train_sampler = WeightedRandomSampler(sample_weights[:train_size], len(train_indices), replacement=True)
+val_sampler = SubsetRandomSampler(val_indices)
+
 
 # Create DataLoaders
-train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler)
-val_loader = DataLoader(val_ds, batch_size=batch_size)
+train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler)
+val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler)
 
 # Model
 class FabricDefectModel(nn.Module):
@@ -79,7 +84,7 @@ class FabricDefectModel(nn.Module):
     def epoch_end(self, epoch, result):
         print(f"Epoch [{epoch}], val_loss: {result['val_loss']:.4f}, val_acc: {result['val_acc']:.4f}")
 
-# Accuracy function
+
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
