@@ -82,8 +82,8 @@ class FabricDefectModel(nn.Module):
         epoch_acc = torch.stack(batch_accs).mean()
         return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
     
-    def epoch_end(self, epoch, result):
-        print(f"Epoch [{epoch}], val_loss: {result['val_loss']:.4f}, val_acc: {result['val_acc']:.4f}")
+   def epoch_end(self, epoch, result):
+    print("Epoch [{}], val_loss: {:.4f}, val_acc: {:.4f}".format(epoch, result['val_loss'], result['val_acc']))
 
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
@@ -129,7 +129,7 @@ print("\nDataset Statistics:")
 for i, (class_name, class_idx) in enumerate(dataset.class_to_idx.items()):
     count = class_counts[class_idx]
     weight = class_weights[class_idx].item()
-    print(f"Class: {class_name}, Count: {count}, Weight: {:.4f}")
+    print(f"Class: {class_name}, Count: {count}, Weight: {weight:.4f}")
 
 print("\nStarting training...")
 history = fit(epochs, model, train_loader, val_loader, optimizer)
