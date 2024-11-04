@@ -9,10 +9,10 @@ from collections import Counter
 from PIL import Image
 
 # --- Data Loading and Preprocessing ---
-# Download dataset (only run this once)
-# path = kagglehub.dataset_download("angelolmg/tilda-400-64x64-patches")
-# print("Path to dataset files:", path)
-# dataset_path = path
+#Download dataset (only run this once)
+path = kagglehub.dataset_download("angelolmg/tilda-400-64x64-patches")
+print("Path to dataset files:", path)
+dataset_path = path
 
 # For testing purposes, replace with your local path
 dataset_path = "/home/gitpod/.cache/kagglehub/datasets/angelolmg/tilda-400-64x64-patches/versions/1" #Replace with your path
