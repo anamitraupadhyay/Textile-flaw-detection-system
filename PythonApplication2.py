@@ -9,7 +9,7 @@ from collections import Counter
 from PIL import Image
 
 # --- Data Loading and Preprocessing ---
-#Download dataset (only run this once)
+# Download dataset
 path = kagglehub.dataset_download("angelolmg/tilda-400-64x64-patches")
 print("Path to dataset files:", path)
 dataset_path = path
