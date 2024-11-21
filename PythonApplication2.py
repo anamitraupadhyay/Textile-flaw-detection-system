@@ -79,6 +79,7 @@ class FabricDefectModel(nn.Module):
         x = F.relu(self.fc1(x)) # forward pass on fc1, does matrix multiplication on input x defined by fc1 model here nn.Linear
         x = F.relu(self.fc2(x)) # same as above, relu used to introduced non linearity in model i.e. sets - vals to 0 and leaves out + vals
         x = self.fc3(x) # no f pass as its final layer also we will apply softmax function too
+        x = F.softmax(x, dim=1) # this fn converts raw o/ps to probabilities ranging from 0 to 1, improv classfying
         return x
 
     def training_step(self, batch):
