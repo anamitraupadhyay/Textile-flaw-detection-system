@@ -159,7 +159,7 @@ def test(model, test_loader):
     print(f"\nTest Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.2f}%")
 
 
-# --- Patch Processing and Prediction ---
+# --- Patch Processing and Prediction ---AI help taken in this part for predicting on user given directory and takes the 1st 64 patches to predict the image
 def process_patches(model, image_paths, class_to_idx):
     patch_predictions = []
     for image_path in image_paths:
